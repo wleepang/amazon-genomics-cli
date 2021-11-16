@@ -102,3 +102,101 @@ func Test_updateResultFromStream_Error(t *testing.T) {
 
 	assert.Equal(t, expectedProgressResult, progressResult)
 }
+
+func Test_isProgressEvent(t *testing.T) {
+	tests := map[string]struct {
+		oldProgressEvent ProgressEvent
+		newProgressEvent ProgressEvent
+		expected         bool
+	}{
+		"empty old event": {
+			oldProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 2,
+			},
+			newProgressEvent: ProgressEvent{},
+			expected:         false,
+		},
+		"empty new event": {
+			oldProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 2,
+			},
+			newProgressEvent: ProgressEvent{},
+			expected:         false,
+		},
+		"current step is 0 for new event": {
+			oldProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 2,
+			},
+			newProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 0,
+			},
+			expected: false,
+		},
+		"old event step is 0": {
+			oldProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 0,
+			},
+			newProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 2,
+			},
+			expected: true,
+		},
+		"progress is not moving forward": {
+			oldProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 2,
+			},
+			newProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 1,
+			},
+			expected: false,
+		},
+		"progress has moved forward": {
+			oldProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 3,
+			},
+			newProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 4,
+			},
+			expected: true,
+		},
+		"event change with no improved progress": {
+			oldProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 2,
+			},
+			newProgressEvent: ProgressEvent{
+				TotalSteps:  9,
+				CurrentStep: 4,
+			},
+			expected: false,
+		},
+		"event change with improved progress": {
+			oldProgressEvent: ProgressEvent{
+				TotalSteps:  4,
+				CurrentStep: 2,
+			},
+			newProgressEvent: ProgressEvent{
+				TotalSteps:  1,
+				CurrentStep: 1,
+			},
+			expected: true,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			actual := doesProgressEventBar(tt.newProgressEvent, tt.oldProgressEvent)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}

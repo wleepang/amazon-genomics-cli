@@ -170,9 +170,11 @@ func runProgressBar(ctx context.Context, description string, numberOfChannels in
 				oldEvent, matchExists := oldProgressEvents[progressEvent.ExecutionName]
 
 				if matchExists {
-					totalSteps += progressEvent.TotalSteps - oldEvent.TotalSteps
-					currentStep += progressEvent.CurrentStep - oldEvent.CurrentStep
-					oldProgressEvents[oldEvent.ExecutionName] = progressEvent
+					if doesProgressEventBar(progressEvent, oldEvent) {
+						totalSteps += progressEvent.TotalSteps - oldEvent.TotalSteps
+						currentStep += progressEvent.CurrentStep - oldEvent.CurrentStep
+						oldProgressEvents[oldEvent.ExecutionName] = progressEvent
+					}
 
 					_, keysExist := keyWithSteps[progressEvent.ExecutionName]
 					if !keysExist && progressEvent.TotalSteps > 0 {
@@ -200,4 +202,19 @@ func runProgressBar(ctx context.Context, description string, numberOfChannels in
 	}()
 
 	return receiver
+}
+
+func doesProgressEventBar(newEvent ProgressEvent, oldEvent ProgressEvent) bool {
+	if oldEvent.TotalSteps == 0 || newEvent.TotalSteps == 0 || newEvent.CurrentStep == 0 {
+		return false
+	}
+
+	if oldEvent.CurrentStep == 0 {
+		return true
+	}
+
+	if float32(newEvent.CurrentStep) / float32(newEvent.TotalSteps) < float32(oldEvent.CurrentStep) / float32(oldEvent.TotalSteps) {
+		return false
+	}
+	return true
 }
