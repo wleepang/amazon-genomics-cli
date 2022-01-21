@@ -99,6 +99,8 @@ class CromwellWESAdapter(AbstractWESAdapter):  # inherit from ABC to enforce int
         outputs = requests.request(GET, outputs_url).json()
         self.logger.info(f"get_run_log metadata: {metadata}")
         self.logger.info(f"get_run_log outputs: {outputs}")
+        self.logger.error("THIS IS MY BINARY")
+        print("THIS IS MY BINARY USING PRINTF")
         run_log_dict = self._build_run_log_dict_(metadata, outputs)
         return self._build_run_log_model_(run_log_dict)
 
@@ -114,6 +116,7 @@ class CromwellWESAdapter(AbstractWESAdapter):  # inherit from ABC to enforce int
         url = self._server_path(run_id, "status")
 
         self.logger.info(f"make GET request to remote WES server at {url}")
+        print("make GET request to remote WES server at", url)
         response = requests.request(GET, url)
         self.logger.info(
             f"GET request to remote WES server returns {response} ({response.text})"
@@ -304,7 +307,10 @@ class CromwellWESAdapter(AbstractWESAdapter):  # inherit from ABC to enforce int
         run_id = metadata.get("id")
         status = metadata["status"]
 
-        if (status == "fail") or (run_id is None):
+        self.logger.error(f"BEFORE CHECKING FAILED STATUS: {status}")
+        print("BEFORE CHECKING FAILED STATUS")
+        if (status == "Failed") or (run_id is None):
+            self.logger.error(f"INSIDE FAILED STATUS BLOCK: {self.workflow_params}")
             return {
                 "run_id": run_id,
                 "state": self._get_workflow_state_(status=status),
@@ -375,6 +381,14 @@ class CromwellWESAdapter(AbstractWESAdapter):  # inherit from ABC to enforce int
                     exit_code=task_log_dict["exit_code"],
                 )
             )
+        my_output = run_log_dict["outputs"]
+
+        self.logger.error(f"THIS IS FOR state: {state}")
+        print("THIS IS FOR state", state)
+        self.logger.error(f"THIS IS with task_logs: {task_logs}")
+        print("THIS IS with task_logs", task_logs)
+        self.logger.error(f"THIS IS with outputs: {my_output}")
+        print("THIS IS FOR outputs", my_output)
 
         return RunLog(
             run_id=run_log_dict["run_id"],

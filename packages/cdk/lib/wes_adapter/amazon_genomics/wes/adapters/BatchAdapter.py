@@ -88,6 +88,11 @@ class BatchAdapter(AbstractWESAdapter):
             traceback.print_exc()
             raise InternalServerError(f"Failed to load child tasks for job {run_id}", e)
 
+        logger.error("=======WE ARE INSIDE BATCH ADAPTER GET_RUN_LOG===========")
+
+        logger.error(f"CONTENT OF CHILD JOBS: {child_jobs}")
+
+
         return RunLog(
             run_id=run_id,
             state=self.batch_job_wes_state(
@@ -230,6 +235,14 @@ class BatchAdapter(AbstractWESAdapter):
 
         start_time = to_iso(job_details.get("startedAt"))
         end_time = to_iso(job_details.get("stoppedAt"))
+
+        logger.error("VALIDATING PARAMETER OUTPUT")
+        logger.error(f"CONTENT OF JOB DETAILS: {job_details}")
+        logger.error("=====================================================================")
+        logger.error("=====================================================================")
+        logger.error(f"CONTENT OF CONTAINER: {job_details["container"]}")
+        logger.error("======================================================================")
+        logger.error(f"CONTENT OF EXIT CODE: {job_details["container"].get("exitCode")}")
 
         return Log(
             name=task_name,
