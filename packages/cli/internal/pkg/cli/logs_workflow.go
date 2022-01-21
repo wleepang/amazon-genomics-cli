@@ -183,10 +183,10 @@ func (o *logsWorkflowOpts) getJobIds(tasks []workflow.Task) ([]string, error) {
 
 	var jobIds []string
 	for _, task := range tasks {
-		if o.failedTasks && task.ExitCode == 0 {
-			log.Debug().Msgf("skipping successful task '%s' ('%s')", task.Name, task.JobId)
-			continue
-		}
+		//if o.failedTasks && task.ExitCode == 0 {
+		//	log.Debug().Msgf("skipping successful task '%s' ('%s')", task.Name, task.JobId)
+		//	continue
+		//}
 		if task.JobId == cachedJobId {
 			log.Debug().Msgf("skipping cached task '%s'", task.Name)
 		}
