@@ -22,7 +22,7 @@ type Log struct {
 	StartTime string `json:"start_time,omitempty"`
 
 	// When the command stopped executing (completed, failed, or cancelled), in ISO 8601 format \"%Y-%m-%dT%H:%M:%SZ\"
-	EndTime string `json:"end_time,omitempty"`
+	EndTime string `json:"	end_time,omitempty"`
 
 	// A URL to retrieve standard output logs of the workflow run or task.  This URL may change between status requests, or may not be available until the task or workflow has finished execution.  Should be available using the same credentials used to access the WES endpoint.
 	Stdout string `json:"stdout,omitempty"`
