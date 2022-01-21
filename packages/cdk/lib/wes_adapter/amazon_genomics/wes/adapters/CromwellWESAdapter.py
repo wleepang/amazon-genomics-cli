@@ -304,7 +304,9 @@ class CromwellWESAdapter(AbstractWESAdapter):  # inherit from ABC to enforce int
         run_id = metadata.get("id")
         status = metadata["status"]
 
-        if (status == "fail") or (run_id is None):
+        self.logger.error(f"CROMWELL -=== RIGHT BEFORE CHECKING STATUS")
+        if (status == "Failed") or (run_id is None):
+            self.logger.error(f"CROMWELL -=== INSIDE FAILED IF CASE")
             return {
                 "run_id": run_id,
                 "state": self._get_workflow_state_(status=status),
