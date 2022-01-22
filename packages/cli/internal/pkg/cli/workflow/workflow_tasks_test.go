@@ -23,8 +23,7 @@ const (
 	testRunId     = "test-run-id"
 	testTaskName  = "test-task-name"
 	testTaskJobId = "test-task-job-id"
-	//testExitCode  = 0
-	testExitCode = ""
+	testExitCode  = "0"
 )
 
 var (
@@ -98,7 +97,7 @@ func (s *GetWorkflowTasksTestSuite) TestGetWorkflowTasks_WithTask() {
 			Name:      testTaskCompositeName,
 			StartTime: testStartTime.UTC().Format("2006-01-02T15:04:05Z"),
 			EndTime:   testStopTime.UTC().Format("2006-01-02T15:04:05Z"),
-			ExitCode:  "",
+			ExitCode:  "0",
 		}},
 	}, nil)
 
@@ -108,7 +107,7 @@ func (s *GetWorkflowTasksTestSuite) TestGetWorkflowTasks_WithTask() {
 		s.Assert().Equal(testTaskJobId, tasks[0].JobId)
 		s.Assert().True(tasks[0].StartTime.Equal(testStartTime.Truncate(time.Second)))
 		s.Assert().True(tasks[0].StopTime.Equal(testStopTime.Truncate(time.Second)))
-		//s.Assert().Equal(testExitCode, tasks[0].ExitCode)
+		s.Assert().Equal(testExitCode, tasks[0].ExitCode)
 	}
 }
 
