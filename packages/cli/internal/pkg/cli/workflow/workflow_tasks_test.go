@@ -97,7 +97,7 @@ func (s *GetWorkflowTasksTestSuite) TestGetWorkflowTasks_WithTask() {
 			Name:      testTaskCompositeName,
 			StartTime: testStartTime.UTC().Format("2006-01-02T15:04:05Z"),
 			EndTime:   testStopTime.UTC().Format("2006-01-02T15:04:05Z"),
-			ExitCode:  "0",
+			ExitCode:  testExitCode,
 		}},
 	}, nil)
 
