@@ -66,8 +66,7 @@ class SnakemakeWESAdapter(BatchAdapter):
     ):
         engine_params_to_pass = []
         if workflow_engine_parameters is not None:
-            print("The engine parameters are {}".format(
-                workflow_engine_parameters))
+            print("The engine parameters are {}".format(workflow_engine_parameters))
             engine_params_to_pass.append(workflow_engine_parameters)
 
         engine_params_to_pass.extend(
@@ -101,14 +100,12 @@ class SnakemakeWESAdapter(BatchAdapter):
         job_id = head_job.get("jobId")
         bucket, folder = self.output_dir_s3_uri.split("/", 2)[-1].split("/", 1)
         output_file_key = f"{folder}/{job_id}/{SM_OUTPUT_FILE_NAME}"
-        output = self.get_s3_object_json(
-            bucket=bucket, output_file_key=output_file_key)
+        output = self.get_s3_object_json(bucket=bucket, output_file_key=output_file_key)
         return {"id": job_id, "outputs": output}
 
     def get_s3_object_json(self, bucket, output_file_key):
         try:
-            output_object = self.aws_s3.get_object(
-                Bucket=bucket, Key=output_file_key)
+            output_object = self.aws_s3.get_object(Bucket=bucket, Key=output_file_key)
             return json.load(output_object["Body"])
         except ClientError as ex:
             if ex.response["Error"]["Code"] == "NoSuchKey":

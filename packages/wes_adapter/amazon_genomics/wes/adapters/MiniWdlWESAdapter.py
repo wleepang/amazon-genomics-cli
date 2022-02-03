@@ -93,8 +93,7 @@ class MiniWdlWESAdapter(BatchAdapter):
 
     def get_s3_object_json(self, bucket, output_file_key):
         try:
-            output_object = self.aws_s3.get_object(
-                Bucket=bucket, Key=output_file_key)
+            output_object = self.aws_s3.get_object(Bucket=bucket, Key=output_file_key)
             return json.load(output_object["Body"])
         except ClientError as ex:
             if ex.response["Error"]["Code"] == "NoSuchKey":
@@ -105,4 +104,4 @@ class MiniWdlWESAdapter(BatchAdapter):
 
 
 def job_id_from_arn(job_arn: str) -> str:
-    return job_arn[job_arn.rindex("/") + 1:]
+    return job_arn[job_arn.rindex("/") + 1 :]
