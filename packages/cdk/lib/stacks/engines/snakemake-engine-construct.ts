@@ -147,7 +147,7 @@ export class SnakemakeEngineConstruct extends EngineConstruct {
       WORKFLOW_ROLE: workflowRoleArn,
       FSAP_ID: fsapId,
       OUTPUT_DIR_S3_URI: outputBucket,
-      TIME: Date.now().toString()
+      TIME: Date.now().toString(),
     });
   }
 }
