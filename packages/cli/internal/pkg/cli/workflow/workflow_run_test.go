@@ -48,6 +48,9 @@ const (
 	testCompressedTmpPath    = "/tmp/123/workflow_1343535"
 	testArgsFileName         = "args.txt"
 	testArgumentsPath        = "workflow/path/" + testArgsFileName
+	testOptionFileName       = "test.json"
+	testOptionPath           = "s3://path/to/" + testOptionFileName
+	testEngineOptions        = "-test"
 	testWesUrl               = "https://TestWesUrl.com/prod"
 	testContext1Stack        = "Agc-Context-TestProject1-" + testUserId + "-TestContext1"
 	testContext2Stack        = "Agc-Context-TestProject1-" + testUserId + "-TestContext2"
@@ -73,6 +76,7 @@ type WorkflowRunTestSuite struct {
 	mockDdb           *awsmocks.MockDdbClient
 	mockStorageClient *storagemocks.MockStorageClient
 	mockInputClient   *storagemocks.MockInputClient
+	mockOptionClient  *storagemocks.MockOptionClient
 	mockOs            *iomocks.MockOS
 	mockZip           *iomocks.MockZip
 	mockTmp           *iomocks.MockTmp
@@ -101,6 +105,7 @@ func (s *WorkflowRunTestSuite) BeforeTest(_, _ string) {
 	s.mockDdb = awsmocks.NewMockDdbClient(s.ctrl)
 	s.mockStorageClient = storagemocks.NewMockStorageClient(s.ctrl)
 	s.mockInputClient = storagemocks.NewMockInputClient(s.ctrl)
+	s.mockOptionClient = storagemocks.NewMockOptionClient(s.ctrl)
 	s.mockOs = iomocks.NewMockOS(s.ctrl)
 	s.mockZip = iomocks.NewMockZip(s.ctrl)
 	s.mockTmp = iomocks.NewMockTmp(s.ctrl)
@@ -122,15 +127,16 @@ func (s *WorkflowRunTestSuite) BeforeTest(_, _ string) {
 	s.localWorkflowAbsPath = filepath.Join(testProjectFileDir, testWorkflowLocalUrl)
 
 	s.manager = &Manager{
-		Project:     s.mockProjectClient,
-		Ssm:         s.mockSsmClient,
-		Cfn:         s.mockCfn,
-		S3:          s.mockS3Client,
-		Ddb:         s.mockDdb,
-		Storage:     s.mockStorageClient,
-		Config:      s.mockConfigClient,
-		InputClient: s.mockInputClient,
-		WesFactory:  func(_ string) (wes.Interface, error) { return s.mockWes, nil },
+		Project:      s.mockProjectClient,
+		Ssm:          s.mockSsmClient,
+		Cfn:          s.mockCfn,
+		S3:           s.mockS3Client,
+		Ddb:          s.mockDdb,
+		Storage:      s.mockStorageClient,
+		Config:       s.mockConfigClient,
+		InputClient:  s.mockInputClient,
+		OptionClient: s.mockOptionClient,
+		WesFactory:   func(_ string) (wes.Interface, error) { return s.mockWes, nil },
 	}
 
 	s.testProjSpec = spec.Project{
@@ -200,7 +206,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_LocalFile_WithS3Args() {
 	s.mockOs.EXPECT().Remove(testCompressedTmpPath).After(uploadCall).Return(nil)
 	s.mockOs.EXPECT().Remove(testTmpAttachmentPath).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, testArgumentsPath)
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, testArgumentsPath, "", "")
 	if s.Assert().NoError(err) {
 		s.Assert().Equal(testRun1Id, actualId)
 	}
@@ -228,7 +234,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_LocalFile_WithLocalArgs() {
 	s.mockOs.EXPECT().Remove(testCompressedTmpPath).After(uploadCall).Return(nil)
 	s.mockOs.EXPECT().Remove(testTmpAttachmentPath).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, testArgumentsPath)
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, testArgumentsPath, "", "")
 	if s.Assert().NoError(err) {
 		s.Assert().Equal(testRun1Id, actualId)
 	}
@@ -252,7 +258,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_LocalFile_NoArgs() {
 	s.mockDdb.EXPECT().WriteWorkflowInstance(context.Background(), s.wfInstance).Return(nil)
 	s.mockOs.EXPECT().Remove(testCompressedTmpPath).After(uploadCall).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().NoError(err) {
 		s.Assert().Equal(testRun1Id, actualId)
 	}
@@ -272,7 +278,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_S3Object_WithLocalArgs() {
 	s.mockDdb.EXPECT().WriteWorkflowInstance(context.Background(), s.wfInstance).Return(nil)
 	s.mockOs.EXPECT().Remove(testTmpAttachmentPath).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testS3WorkflowName, testArgumentsPath)
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testS3WorkflowName, testArgumentsPath, "", "")
 	if s.Assert().NoError(err) {
 		s.Assert().Equal(testRun1Id, actualId)
 	}
@@ -287,7 +293,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_S3Object_NoArgs() {
 	s.mockWes.EXPECT().RunWorkflow(context.Background(), gomock.Any()).Return(testRun1Id, nil)
 	s.wfInstance.WorkflowName = testS3WorkflowName
 	s.mockDdb.EXPECT().WriteWorkflowInstance(context.Background(), s.wfInstance).Return(nil)
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testS3WorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testS3WorkflowName, "", "", "")
 	if s.Assert().NoError(err) {
 		s.Assert().Equal(testRun1Id, actualId)
 	}
@@ -297,7 +303,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_ReadProjectSpecFailure() {
 	errorMessage := "failed to read project specification"
 	s.mockProjectClient.EXPECT().Read().Return(spec.Project{}, errors.New(errorMessage))
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, "", "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, "", "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -307,7 +313,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_ReadProjectSpecFailure() {
 func (s *WorkflowRunTestSuite) TestRunWorkflow_MissingWorkflowSpec() {
 	s.mockProjectClient.EXPECT().Read().Return(s.testProjSpec, nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, "dummy", "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, "dummy", "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+"workflow 'dummy' is not defined in Project 'TestProject1' specification")
 		s.Assert().Empty(actualId)
@@ -320,7 +326,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_InvalidWorkflowDefinitionUrl() {
 	s.mockProjectClient.EXPECT().Read().Return(s.testProjSpec, nil)
 	s.mockSsmClient.EXPECT().GetOutputBucket().Return(testOutputBucket, nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testInvalidWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testInvalidWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+`parse ":NotURL:": missing protocol scheme`)
 		s.Assert().Empty(actualId)
@@ -338,7 +344,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_CompressionFailed() {
 	s.mockFileInfo.EXPECT().IsDir().Return(false)
 	s.mockZip.EXPECT().CompressToTmp(testFullWorkflowLocalUrl).Return("", errors.New(errorMessage))
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -352,7 +358,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_SSMClientFailed() {
 	s.mockProjectClient.EXPECT().Read().Return(s.testProjSpec, nil)
 	s.mockSsmClient.EXPECT().GetOutputBucket().Return("", errors.New(errorMessage))
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -376,7 +382,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_UploadToS3Failed() {
 	s.mockS3Client.EXPECT().UploadFile(testOutputBucket, testWorkflowZipKey, testCompressedTmpPath).Return(errors.New(errorMessage))
 	s.mockOs.EXPECT().Remove(testCompressedTmpPath).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+expectedInfix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -400,7 +406,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_ReadArgsFailed() {
 	s.mockStorageClient.EXPECT().ReadAsBytes(testArgumentsPath).Return([]byte{}, errors.New(errorMessage))
 	s.mockOs.EXPECT().Remove(testCompressedTmpPath).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, testArgumentsPath)
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, testArgumentsPath, "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -426,7 +432,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_UploadInputFailed() {
 	s.mockS3Client.EXPECT().SyncFile(testOutputBucket, testDataKey, s.absDataFilePath).Return(errors.New(errorMessage))
 	s.mockOs.EXPECT().Remove(testCompressedTmpPath).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, testArgumentsPath)
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, testArgumentsPath, "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+expectedInfix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -447,7 +453,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_CfnFailed() {
 	s.mockCfn.EXPECT().GetStackInfo(testContext1Stack).Return(cfn.StackInfo{}, errors.New(errorMessage))
 	s.mockOs.EXPECT().Remove(testCompressedTmpPath).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -472,7 +478,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_CfnMissingWesUrlFailed() {
 	s.mockCfn.EXPECT().GetStackInfo(testContext1Stack).Return(stackInfo, nil)
 	s.mockOs.EXPECT().Remove(testCompressedTmpPath).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -497,7 +503,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_WesFailed() {
 	s.mockWes.EXPECT().RunWorkflow(context.Background(), gomock.Any()).Return("", errors.New(errorMessage))
 	s.mockOs.EXPECT().Remove(testCompressedTmpPath).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -510,7 +516,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_DeployValidationFailed() {
 	s.mockProjectClient.EXPECT().Read().Return(s.testProjSpec, nil)
 	s.mockCfn.EXPECT().GetStackStatus(testContext1Stack).Return(types.StackStatusCreateComplete, cfn.StackDoesNotExistError)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -523,7 +529,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_DeployValidationCfnFailed() {
 	s.mockProjectClient.EXPECT().Read().Return(s.testProjSpec, nil)
 	s.mockCfn.EXPECT().GetStackStatus(testContext1Stack).Return(types.StackStatusCreateComplete, errors.New(errorMessage))
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -541,7 +547,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_CreateTempDir() {
 	s.mockFileInfo.EXPECT().IsDir().Return(true)
 	s.mockTmp.EXPECT().TempDir("", "workflow_*").Return("", errors.New(errorMessage))
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -561,7 +567,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_CopyError() {
 	s.mockInputClient.EXPECT().UpdateInputReferencesAndUploadToS3(testFullWorkflowLocalUrl, testTempDir, testOutputBucket, testWorkflowKey).Return(errors.New(errorMessage))
 	s.mockOs.EXPECT().RemoveAll(testTempDir).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "")
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, "", "", "")
 	if s.Assert().Error(err) {
 		s.Assert().EqualError(err, testErrorPrefix+errorMessage)
 		s.Assert().Empty(actualId)
@@ -589,7 +595,7 @@ func (s *WorkflowRunTestSuite) TestRunWorkflow_RemoveErrorStillWorks() {
 	s.mockOs.EXPECT().Remove(testCompressedTmpPath).After(uploadCall).Return(nil)
 	s.mockOs.EXPECT().Remove(testTmpAttachmentPath).Return(nil)
 
-	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, testArgumentsPath)
+	actualId, err := s.manager.RunWorkflow(testContext1Name, testLocalWorkflowName, testArgumentsPath, "", "")
 	if s.Assert().NoError(err) {
 		s.Assert().Equal(testRun1Id, actualId)
 	}

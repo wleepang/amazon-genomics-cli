@@ -65,19 +65,23 @@ type s3Props struct {
 
 //nolint:structcheck
 type runProps struct {
-	runId           string
-	workflowSpec    spec.Workflow
-	workflowEngine  string
-	parsedSourceURL *url.URL
-	isLocal         bool
-	path            string
-	packPath        string
-	workflowUrl     string
-	inputUrl        string
-	input           Input
-	arguments       []string
-	attachments     []string
-	workflowParams  map[string]string
+	runId                string
+	workflowSpec         spec.Workflow
+	workflowEngine       string
+	parsedSourceURL      *url.URL
+	isLocal              bool
+	path                 string
+	packPath             string
+	workflowUrl          string
+	inputUrl             string
+	input                Input
+	optionFileUrl        string
+	optionFile           OptionFile
+	engineOptions        string
+	arguments            []string
+	attachments          []string
+	workflowParams       map[string]string
+	workflowEngineParams map[string]string
 }
 
 //nolint:structcheck
@@ -116,15 +120,16 @@ type workflowOutputProps struct {
 }
 
 type Manager struct {
-	Project     storage.ProjectClient
-	Config      storage.ConfigClient
-	S3          s3.Interface
-	Ssm         ssm.Interface
-	Cfn         cfn.Interface
-	Ddb         ddb.Interface
-	Storage     storage.StorageClient
-	InputClient storage.InputClient
-	WesFactory  func(url string) (wes.Interface, error)
+	Project      storage.ProjectClient
+	Config       storage.ConfigClient
+	S3           s3.Interface
+	Ssm          ssm.Interface
+	Cfn          cfn.Interface
+	Ddb          ddb.Interface
+	Storage      storage.StorageClient
+	InputClient  storage.InputClient
+	OptionClient storage.OptionClient
+	WesFactory   func(url string) (wes.Interface, error)
 
 	wes wes.Interface
 	baseProps
@@ -154,15 +159,16 @@ func NewManager(profile string) *Manager {
 	}
 	s3 := aws.S3Client(profile)
 	return &Manager{
-		Project:     projectClient,
-		Config:      configClient,
-		Ssm:         aws.SsmClient(profile),
-		Cfn:         aws.CfnClient(profile),
-		S3:          s3,
-		Ddb:         aws.DdbClient(profile),
-		Storage:     storageClient,
-		InputClient: storage.NewInputClient(s3),
-		WesFactory:  func(url string) (wes.Interface, error) { return wes.New(url, profile) },
+		Project:      projectClient,
+		Config:       configClient,
+		Ssm:          aws.SsmClient(profile),
+		Cfn:          aws.CfnClient(profile),
+		S3:           s3,
+		Ddb:          aws.DdbClient(profile),
+		Storage:      storageClient,
+		InputClient:  storage.NewInputClient(s3),
+		OptionClient: storage.NewOptionClient(s3),
+		WesFactory:   func(url string) (wes.Interface, error) { return wes.New(url, profile) },
 	}
 }
 
@@ -304,6 +310,7 @@ func (m *Manager) readInput(inputUrl string) {
 	if m.err != nil || inputUrl == "" {
 		return
 	}
+	log.Debug().Msgf("Input file override URL: %s", inputUrl)
 	m.inputUrl = inputUrl
 	bytes, err := m.Storage.ReadAsBytes(inputUrl)
 	if err != nil {
@@ -363,6 +370,52 @@ func (m *Manager) uploadInputFileToS3(inputKey inputKey, fileUrl inputUrl) input
 		return fileUrl
 	}
 	return fmt.Sprintf("s3://%s/%s", m.bucketName, objectKey)
+}
+
+func (m *Manager) readOptionFile(optionFileUrl string) {
+	if m.err != nil || optionFileUrl == "" {
+		return
+	}
+	log.Debug().Msgf("Option file override URL: %s", optionFileUrl)
+	m.optionFileUrl = optionFileUrl
+	bytes, err := m.Storage.ReadAsBytes(optionFileUrl)
+	if err != nil {
+		m.err = err
+		return
+	}
+	var optionFile OptionFile
+	if err := json.Unmarshal(bytes, &optionFile); err != nil {
+		m.err = err
+		return
+	}
+	m.optionFile = optionFile
+}
+
+func (m *Manager) uploadOptionFileToS3() {
+	if m.err != nil || m.optionFile == nil {
+		return
+	}
+	objectKey := awsresources.RenderBucketDataKey(m.projectSpec.Name, m.userId)
+	dir, err := createTempDir("", "workflow_*")
+	if err != nil {
+		m.err = err
+		return
+	}
+	fileLocation := fmt.Sprintf("%s/%s", dir, m.optionFileUrl)
+	updatedOption, err := m.OptionClient.UpdateOptionFile(m.Project.GetLocation(), m.optionFile, m.bucketName, objectKey, fileLocation)
+	m.optionFile = updatedOption
+}
+
+func (m *Manager) readEngineOptions(engineOptions string) {
+	if m.err != nil || engineOptions == "" {
+		return
+	}
+	log.Debug().Msgf("engineOptions override: %s", engineOptions)
+	if m.workflowEngine == "cromwell" {
+		log.Debug().Msgf("cannot use engineOptions flag with engines that run in server mode")
+		return
+	}
+	m.engineOptions = engineOptions
 }
 
 func toAbsPath(basePath, somePath string) (string, error) {
@@ -458,6 +511,21 @@ func (m *Manager) setWorkflowParameters() {
 	m.workflowParams["workflowInputs"] = filepath.Base(m.attachments[0])
 }
 
+func (m *Manager) setWorkflowEngineParameters() {
+	if m.err != nil {
+		return
+	}
+	m.workflowEngineParams = make(map[string]string)
+	if m.optionFileUrl == "" {
+		return
+	}
+	if m.workflowEngine == "nextflow" || m.workflowEngine == "miniwdl" {
+		log.Debug().Msgf("optionFile flag can only be used with head node engines")
+		return
+	}
+	m.workflowEngineParams["workflowOptionFile"] = filepath.Base(m.attachments[0])
+}
+
 func (m *Manager) setWesClient() {
 	if m.err != nil {
 		return
@@ -500,7 +568,8 @@ func (m *Manager) runWorkflow() {
 		option.WorkflowType(m.workflowSpec.Type.Language),
 		option.WorkflowTypeVersion(m.workflowSpec.Type.Version),
 		option.WorkflowAttachment(m.attachments),
-		option.WorkflowParams(m.workflowParams))
+		option.WorkflowParams(m.workflowParams),
+		option.WorkflowEngineParams(m.workflowEngineParams))
 }
 
 func (m *Manager) recordWorkflowRun(workflowName, contextName string) {

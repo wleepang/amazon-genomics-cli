@@ -10,6 +10,18 @@ const (
 )
 
 const (
+	optionFileFlag            = "optionsFile"
+	optionFileFlagShort       = "o"
+	optionFileFlagDescription = "Options file to use."
+)
+
+const (
+	engineOptionsFlag            = "engineOptions"
+	engineOptionsFlagShort       = "e"
+	engineOptionsFlagDescription = "Engine options to use."
+)
+
+const (
 	VerboseFlag            = "verbose"
 	VerboseFlagShort       = "v"
 	VerboseFlagDescription = "Display verbose diagnostic information."

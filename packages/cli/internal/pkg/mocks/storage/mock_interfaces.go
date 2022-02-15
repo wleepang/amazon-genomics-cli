@@ -336,3 +336,55 @@ func (mr *MockInputClientMockRecorder) UpdateInputReferencesAndUploadToS3(initia
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateInputReferencesAndUploadToS3", reflect.TypeOf((*MockInputClient)(nil).UpdateInputReferencesAndUploadToS3), initialProjectDirectory, tempProjectDirectory, bucketName, baseS3Key)
 }
+
+// MockOptionClient is a mock of OptionClient interface.
+type MockOptionClient struct {
+	ctrl     *gomock.Controller
+	recorder *MockOptionClientMockRecorder
+}
+
+// MockInputClientMockRecorder is the mock recorder for MockOptionClient.
+type MockOptionClientMockRecorder struct {
+	mock *MockOptionClient
+}
+
+// NewMockOptionClient creates a new mock instance.
+func NewMockOptionClient(ctrl *gomock.Controller) *MockOptionClient {
+	mock := &MockOptionClient{ctrl: ctrl}
+	mock.recorder = &MockOptionClientMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockOptionClient) EXPECT() *MockOptionClientMockRecorder {
+	return m.recorder
+}
+
+// UpdateOptionReferenceAndUploadToS3 mocks base method.
+func (m *MockOptionClient) UpdateOptionReferenceAndUploadToS3(initialProjectDirectory, tempProjectDirectory, bucketName, baseS3Key string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateOptionReferenceAndUploadToS3", initialProjectDirectory, tempProjectDirectory, bucketName, baseS3Key)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateOptionReferenceAndUploadToS3 indicates an expected call of UpdateOptionReferenceAndUploadToS3.
+func (mr *MockOptionClientMockRecorder) UpdateOptionReferenceAndUploadToS3(initialProjectDirectory, tempProjectDirectory, bucketName, baseS3Key interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOptionReferenceAndUploadToS3", reflect.TypeOf((*MockOptionClient)(nil).UpdateOptionReferenceAndUploadToS3), initialProjectDirectory, tempProjectDirectory, bucketName, baseS3Key)
+}
+
+// UpdateOptionFile mocks base method.
+func (m *MockOptionClient) UpdateOptionFile(initialProjectDirectory string, optionFile map[string]interface{}, bucketName string, baseS3Key string, fileLocation string) (map[string]interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateOptionFile", initialProjectDirectory, optionFile, bucketName, baseS3Key, fileLocation)
+	ret0, _ := ret[0].(map[string]interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateOptionFile indicates an expected call of UpdateInputsInFile.
+func (mr *MockOptionClientMockRecorder) UpdateOptionFile(initialProjectDirectory, optionFile, bucketName, baseS3Key, fileLocation interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOptionFile", reflect.TypeOf((*MockOptionClient)(nil).UpdateOptionFile), initialProjectDirectory, optionFile, bucketName, baseS3Key, fileLocation)
+}
