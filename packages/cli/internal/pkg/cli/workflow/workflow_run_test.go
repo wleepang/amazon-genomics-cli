@@ -48,9 +48,6 @@ const (
 	testCompressedTmpPath    = "/tmp/123/workflow_1343535"
 	testArgsFileName         = "args.txt"
 	testArgumentsPath        = "workflow/path/" + testArgsFileName
-	testOptionFileName       = "test.json"
-	testOptionPath           = "s3://path/to/" + testOptionFileName
-	testEngineOptions        = "-test"
 	testWesUrl               = "https://TestWesUrl.com/prod"
 	testContext1Stack        = "Agc-Context-TestProject1-" + testUserId + "-TestContext1"
 	testContext2Stack        = "Agc-Context-TestProject1-" + testUserId + "-TestContext2"

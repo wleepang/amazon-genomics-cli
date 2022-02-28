@@ -375,15 +375,15 @@ func (mr *MockOptionClientMockRecorder) UpdateOptionReferenceAndUploadToS3(initi
 }
 
 // UpdateOptionFile mocks base method.
-func (m *MockOptionClient) UpdateOptionFile(initialProjectDirectory string, optionFile map[string]interface{}, bucketName string, baseS3Key string, fileLocation string) (map[string]interface{}, error) {
+func (m *MockOptionClient) UpdateOptionFile(initialProjectDirectory string, optionFile interface{}, bucketName string, baseS3Key string, fileLocation string) (interface{}, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateOptionFile", initialProjectDirectory, optionFile, bucketName, baseS3Key, fileLocation)
-	ret0, _ := ret[0].(map[string]interface{})
+	ret0, _ := ret[0].(interface{})
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// UpdateOptionFile indicates an expected call of UpdateInputsInFile.
+// UpdateOptionFile indicates an expected call of UpdateOptionFile.
 func (mr *MockOptionClientMockRecorder) UpdateOptionFile(initialProjectDirectory, optionFile, bucketName, baseS3Key, fileLocation interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOptionFile", reflect.TypeOf((*MockOptionClient)(nil).UpdateOptionFile), initialProjectDirectory, optionFile, bucketName, baseS3Key, fileLocation)
