@@ -124,16 +124,15 @@ func (s *WorkflowRunTestSuite) BeforeTest(_, _ string) {
 	s.localWorkflowAbsPath = filepath.Join(testProjectFileDir, testWorkflowLocalUrl)
 
 	s.manager = &Manager{
-		Project:      s.mockProjectClient,
-		Ssm:          s.mockSsmClient,
-		Cfn:          s.mockCfn,
-		S3:           s.mockS3Client,
-		Ddb:          s.mockDdb,
-		Storage:      s.mockStorageClient,
-		Config:       s.mockConfigClient,
-		InputClient:  s.mockInputClient,
-		OptionClient: s.mockOptionClient,
-		WesFactory:   func(_ string) (wes.Interface, error) { return s.mockWes, nil },
+		Project:     s.mockProjectClient,
+		Ssm:         s.mockSsmClient,
+		Cfn:         s.mockCfn,
+		S3:          s.mockS3Client,
+		Ddb:         s.mockDdb,
+		Storage:     s.mockStorageClient,
+		Config:      s.mockConfigClient,
+		InputClient: s.mockInputClient,
+		WesFactory:  func(_ string) (wes.Interface, error) { return s.mockWes, nil },
 	}
 
 	s.testProjSpec = spec.Project{
