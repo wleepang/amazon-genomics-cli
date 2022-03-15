@@ -359,32 +359,3 @@ func NewMockOptionClient(ctrl *gomock.Controller) *MockOptionClient {
 func (m *MockOptionClient) EXPECT() *MockOptionClientMockRecorder {
 	return m.recorder
 }
-
-// UpdateOptionReferenceAndUploadToS3 mocks base method.
-func (m *MockOptionClient) UpdateOptionReferenceAndUploadToS3(initialProjectDirectory, tempProjectDirectory, bucketName, baseS3Key string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateOptionReferenceAndUploadToS3", initialProjectDirectory, tempProjectDirectory, bucketName, baseS3Key)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateOptionReferenceAndUploadToS3 indicates an expected call of UpdateOptionReferenceAndUploadToS3.
-func (mr *MockOptionClientMockRecorder) UpdateOptionReferenceAndUploadToS3(initialProjectDirectory, tempProjectDirectory, bucketName, baseS3Key interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOptionReferenceAndUploadToS3", reflect.TypeOf((*MockOptionClient)(nil).UpdateOptionReferenceAndUploadToS3), initialProjectDirectory, tempProjectDirectory, bucketName, baseS3Key)
-}
-
-// UpdateOptionFile mocks base method.
-func (m *MockOptionClient) UpdateOptionFile(initialProjectDirectory string, optionFile interface{}, bucketName string, baseS3Key string, fileLocation string) (interface{}, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateOptionFile", initialProjectDirectory, optionFile, bucketName, baseS3Key, fileLocation)
-	ret0, _ := ret[0].(interface{})
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// UpdateOptionFile indicates an expected call of UpdateOptionFile.
-func (mr *MockOptionClientMockRecorder) UpdateOptionFile(initialProjectDirectory, optionFile, bucketName, baseS3Key, fileLocation interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateOptionFile", reflect.TypeOf((*MockOptionClient)(nil).UpdateOptionFile), initialProjectDirectory, optionFile, bucketName, baseS3Key, fileLocation)
-}
