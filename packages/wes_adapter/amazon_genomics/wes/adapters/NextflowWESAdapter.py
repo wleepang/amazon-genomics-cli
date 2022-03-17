@@ -1,5 +1,6 @@
 import typing
 
+import itertools
 import time
 import os
 
@@ -130,24 +131,39 @@ class NextflowWESAdapter(BatchAdapter):
 
         end_time = job_details.get("stoppedAt")
 
-        query_id = self.aws_logs.start_query(
-            logGroupName=self.engine_log_group,
-            startTime=start_time,
-            endTime=end_time or int(time.time()),
-            queryString=query,
-            # TODO: handle pagination? GetRunLog doesn't seem to support it...
-            limit=100,
-        )["queryId"]
-        response = None
+        # A few assumptions:
+        # - complete logs capture events for processes that have timescales of at least
+        #   1 min and can be several days (e.g. max of 10 days)
+        # - within 10 min, there are <=10_000 query results
+        # - all log queries must complete within 29s to meet APIGW's integration timeout limit
+        # In a worst case scenario, the code below will make 1440 queries and take 24s to execute 
+        last_time_point = end_time or int(time.time())
+        time_points = list(range(start_time, last_time_point, 600))
+        if not last_time_point in time_points:
+            time_points += [last_time_point]
+        time_ranges = pairwise(time_points)
 
-        while response is None or response["status"] in ("Scheduled", "Running"):
-            self.logger.info(f"Waiting for query [{query_id}] to complete ...")
-            time.sleep(1)
-            response = self.aws_logs.get_query_results(queryId=query_id)
-        if response["status"] != "Complete":
-            raise InternalServerError("Logs query for child tasks was not successful")
+        # TODO: handle pagination? GetRunLog doesn't seem to support it...
+        results = []
+        for time_range in time_ranges:
+            query_id = self.aws_logs.start_query(
+                logGroupName=self.engine_log_group,
+                startTime=time_range[0],
+                endTime=time_range[1] - 1 if time_range[1] != last_time_point else last_time_point,
+                queryString=query,
+                limit=10_000,  # set to maximum allowed result count
+            )["queryId"]
+            response = None
 
-        results = list(map(lambda result: to_dict(result), response["results"]))
+            while response is None or response["status"] in ("Scheduled", "Running"):
+                self.logger.info(f"Waiting for query [{query_id}] to complete ...")
+                time.sleep(1)
+                response = self.aws_logs.get_query_results(queryId=query_id)
+            if response["status"] != "Complete":
+                raise InternalServerError("Logs query for child tasks was not successful")
+
+            results += list(map(lambda result: to_dict(result), response["results"]))
+        
         return results
 
 
@@ -159,3 +175,15 @@ def to_dict(results: typing.List[ResultFieldTypeDef]):
         for result in results
         if result["field"] != "@ptr"
     }
+
+# Default Lambda Python is 3.9
+# This function was added to itertools in 3.10
+def pairwise(iterable):
+    """
+    Return successive overlapping pairs taken from the input iterable.
+
+    The number of 2-tuples in the output iterator will be one fewer than the number of inputs. It will be empty if the input iterable has fewer than two values.
+    """
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
